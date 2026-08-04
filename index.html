@@ -7,14 +7,14 @@
 <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22PrepEngine%22,%22short_name%22:%22PrepEngine%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%230f172a%22}">
 <style>
 :root {
---bg: #0f172a;
---card: #1e293b;
---accent: #38bdf8;
---green: #22c55e;
---red: #ef4444;
---text: #f8fafc;
---subtext: #94a3b8;
---border: #334155;
+  --bg: #0f172a;
+  --card: #1e293b;
+  --accent: #38bdf8;
+  --green: #22c55e;
+  --red: #ef4444;
+  --text: #f8fafc;
+  --subtext: #94a3b8;
+  --border: #334155;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 body { background-color: var(--bg); color: var(--text); padding: 16px; padding-bottom: 40px; }
@@ -77,19 +77,19 @@ button.danger { background: var(--red); color: white; }
 <!-- MAIN ENGINE MODES -->
 <h3>Select Prep Mode</h3>
 <div class="nav-grid">
-<div class="nav-card active" onclick="switchMode('mock')">
+<div class="nav-card active" onclick="switchMode('mock', this)">
 <h4>Full Mock Test</h4>
 <p>Timed Exam Simulator</p>
 </div>
-<div class="nav-card" onclick="switchMode('subject')">
+<div class="nav-card" onclick="switchMode('subject', this)">
 <h4>Subject-Wise</h4>
 <p>Targeted Practice</p>
 </div>
-<div class="nav-card" onclick="switchMode('pyq')">
+<div class="nav-card" onclick="switchMode('pyq', this)">
 <h4>PYQ Vault</h4>
 <p>Past Exam Questions</p>
 </div>
-<div class="nav-card" onclick="switchMode('qbank')">
+<div class="nav-card" onclick="switchMode('qbank', this)">
 <h4>Master QBank</h4>
 <p>Browse All Questions</p>
 </div>
@@ -246,7 +246,7 @@ updateDashboardStats();
 
 function updateDashboardStats() {
 const pyqCount = bank.filter(q => q.type === 'PYQ').length;
-document.getElementById('bankStats').innerText = Total: ${bank.length} (${pyqCount} PYQs);
+document.getElementById('bankStats').innerText = `Total: ${bank.length} (${pyqCount} PYQs)`;
 }
 
 // API Key Check
@@ -273,13 +273,12 @@ alert("Gemini API Key Saved!");
 });
 
 // Mode Navigation
-window.switchMode = function(mode) {
+window.switchMode = function(mode, el) {
 currentActiveMode = mode;
 const cards = document.querySelectorAll('.nav-card');
 cards.forEach(c => c.classList.remove('active'));
 
-// Highlight selected
-event.currentTarget.classList.add('active');
+if(el) el.classList.add('active');
 
 const title = document.getElementById('configTitle');
 const filterWrapper = document.getElementById('subjectFilterWrapper');
@@ -320,8 +319,8 @@ const btn = document.getElementById('genAiBtn');
 btn.innerText = "Generating Questions...";
 btn.disabled = true;
 
-const promptStr = Generate 5 exam questions for ${topic}. Return ONLY a raw JSON array matching this structure without markdown formatting:
-[{"id":"${Date.now()}","exam":"NEET_PG","subject":"${topic}","question":"Question text?","options":["A","B","C","D"],"answer":0,"type":"${typeChoice}"}];
+const promptStr = `Generate 5 exam questions for ${topic}. Return ONLY a raw JSON array matching this structure without markdown formatting:
+[{"id":"${Date.now()}","exam":"NEET_PG","subject":"${topic}","question":"Question text?","options":["A","B","C","D"],"answer":0,"type":"${typeChoice}"}]`;
 
 try {
 const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
@@ -334,13 +333,13 @@ const data = await res.json();
 if (data.error) throw new Error(data.error.message);
 
 let txt = data.candidates[0].content.parts[0].text;
-txt = txt.replace(/json/g, '').replace(//g, '').trim();
+txt = txt.replace(/```json/g, '').replace(/```/g, '').trim();
 const parsed = JSON.parse(txt);
 
 bank = [...bank, ...parsed];
 localStorage.setItem('pe_master_bank', JSON.stringify(bank));
 updateDashboardStats();
-alert(Success! 5 new ${typeChoice} questions added.`);
+alert(`Success! 5 new ${typeChoice} questions added.`);
 } catch (err) {
 alert("Generation failed: " + err.message);
 } finally {
@@ -383,7 +382,7 @@ renderQuestion();
 // Question Engine Renderer
 function renderQuestion() {
 const q = activeTestSet[currentQIndex];
-document.getElementById('qBadge').innerText = Q${currentQIndex + 1}/{q.subject} [${q.type}];
+document.getElementById('qBadge').innerText = `Q${currentQIndex + 1} / ${q.subject} [${q.type}]`;
 document.getElementById('qText').innerText = q.question;
 
 const container = document.getElementById('optionsContainer');
@@ -391,7 +390,8 @@ container.innerHTML = '';
 
 q.options.forEach((opt, idx) => {
 const btn = document.createElement('button');
-btn.className = option-btn${userAnswers[currentQIndex] === idx ? 'selected' : ''}; btn.innerText ={opt}`;
+btn.className = `option-btn ${userAnswers[currentQIndex] === idx ? 'selected' : ''}`;
+btn.innerText = opt;
 btn.onclick = function() {
 userAnswers[currentQIndex] = idx;
 renderQuestion();
@@ -407,7 +407,7 @@ const grid = document.getElementById('paletteGrid');
 grid.innerHTML = '';
 activeTestSet.forEach((_, idx) => {
 const btn = document.createElement('button');
-btn.className = q-num-btn ${userAnswers[idx] !== undefined ? 'answered' : ''} ${idx === currentQIndex ? 'current' : ''};
+btn.className = `q-num-btn ${userAnswers[idx] !== undefined ? 'answered' : ''} ${idx === currentQIndex ? 'current' : ''}`;
 btn.innerText = idx + 1;
 btn.onclick = function() {
 currentQIndex = idx;
@@ -446,7 +446,7 @@ document.getElementById('testView').classList.add('hidden');
 document.getElementById('resultView').classList.remove('hidden');
 
 document.getElementById('scoreDisplay').innerText = score;
-document.getElementById('summaryText').innerText = Correct: ${correct} | Incorrect: ${incorrect} | Unanswered: ${activeTestSet.length - (correct + incorrect)};
+document.getElementById('summaryText').innerText = `Correct: ${correct} | Incorrect: ${incorrect} | Unanswered: ${activeTestSet.length - (correct + incorrect)}`;
 });
 
 document.getElementById('returnHomeBtn').addEventListener('click', function() {
@@ -458,6 +458,8 @@ updateDashboardStats();
 // Boot Engine
 initBank();
 checkKey();
+});
 </script>
 </body>
 </html>
+
